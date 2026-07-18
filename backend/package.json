@@ -1,0 +1,28 @@
+{
+  "name": "workbuddy2api",
+  "version": "1.0.0",
+  "description": "CodeBuddy GLM 5.2 API 反代服务 — 将 CodeBuddy 额度转为标准 OpenAI 兼容接口",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "@fastify/cors": "^10.0.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0",
+    "undici-types": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
