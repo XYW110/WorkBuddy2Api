@@ -1,0 +1,181 @@
+# ========================================
+# 核心框架 - Trellis（保留规范，忽略运行时）
+# ========================================
+.trellis/.developer
+.trellis/.current-task
+.trellis/.runtime/
+.trellis/.agents/
+.trellis/.agent-log
+.trellis/.session-id
+.trellis/.plan-log
+.trellis/agents/
+.trellis/skills/
+.trellis/.template-hashes.json
+# 保留: spec/ workflow.md scripts/ tasks/ config.yaml
+
+# ========================================
+# AI 助手工具（保留配置，忽略运行时）
+# ========================================
+# CodeBuddy
+.codebuddy/.cache/
+.codebuddy/.log/
+
+# Snow CLI
+.snow/log/
+.snow/locks/
+.snow/notebook/
+.snow/codebase/embeddings.db
+.snow/settings.json
+
+# CodeGraph（仅保留 .gitignore，忽略数据库）
+.codegraph/*.db
+.codegraph/*.db-shm
+.codegraph/*.db-wal
+.codegraph/daemon.log
+.codegraph/daemon.pid
+
+# OpenCode / Qoder / OpenMCP
+.opencode/.cache/
+.opencode/.log/
+.qoder/.cache/
+.qoder/.log/
+.openmcp/
+
+# ========================================
+# IDE 本地配置
+# ========================================
+.cursor/
+.cursor-*
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+.worktrees/
+.claude/
+
+# ========================================
+# Cloudflare Wrangler
+# ========================================
+.wrangler/
+wrangler-out.log
+wrangler_err.txt
+
+# ========================================
+# 其他运行时缓存
+# ========================================
+.pytest_cache/
+
+# ========================================
+# Python
+# ========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+build/
+develop-eggs/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share-python-wheels/
+*.manifest
+*.spec
+
+# ========================================
+# Node.js
+# ========================================
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ========================================
+# 项目运行时数据
+# ========================================
+data/*.json
+logs/
+legacy/
+*legacy*.py
+
+# ========================================
+# 环境变量
+# ========================================
+.env
+.env.local
+.env.*.local
+
+# ========================================
+# 系统文件
+# ========================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# ========================================
+# 临时文件
+# ========================================
+*.tmp
+*.bak
+*.sw?
+*.suo
+*.ntvs
+*.njsproj
+*.sln
+/temp/
+/.zread/wiki/drafts
+
+/data
+/.mypy_cache
+
+
+.env
+config.json
+.claude
+.agents
+.vscode
+backend/README.md
+nocturne_memory.db
+nocturne_data*.db
+migration_log.json
+scripts/backup_memory.ps1
+*.bak
+*.db-shm
+*.db-wal
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+frontend/node_modules
+snapshots/
+assets/
+frontend/dist/
+backups/
+
+# Sisyphus tooling artifacts
+.sisyphus/
+demo.db
+/.snow/plan
