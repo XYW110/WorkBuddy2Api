@@ -22,16 +22,22 @@ backend/
 │   │   ├── chat.ts           # POST /v1/chat/completions — OpenAI-compatible chat
 │   │   ├── models.ts         # GET /v1/models — model listing
 │   │   └── admin/
-│   │       └── credentials.ts # Admin CRUD + quota endpoints
+│   │       ├── credentials.ts # Admin CRUD + quota endpoints
+│   │       └── checkin.ts     # Admin checkin routes (run / status / by-id)
 │   ├── services/
 │   │   ├── credential-loader.ts  # Reads local workbuddy-desktop.info file
 │   │   ├── credential-store.ts   # In-memory credential storage + JSON persistence
 │   │   ├── translate.ts          # OpenAI ↔ CodeBuddy protocol translation
-│   │   └── proxy.ts             # HTTP requests to upstream CodeBuddy API
+│   │   ├── proxy.ts             # HTTP requests to upstream CodeBuddy API
+│   │   ├── checkin.ts           # Daily checkin service (status + daily-checkin + refresh retry)
+│   │   └── scheduler.ts         # setTimeout-based daily checkin scheduler
 │   ├── types/
 │   │   ├── credential.ts    # Credential, CredentialStore interfaces
 │   │   ├── openai.ts        # OpenAI Chat API types (requests, responses, chunks)
-│   │   └── codebuddy.ts     # CodeBuddy native API types
+│   │   ├── codebuddy.ts     # CodeBuddy native API types
+│   │   └── checkin.ts      # Checkin activity / daily-checkin / result interfaces
+│   ├── scripts/
+│   │   └── run-checkin-once.ts # One-shot CLI: npm run checkin:once
 │   └── utils/
 │       ├── env.ts           # Path resolution (credential file, data dir)
 │       └── logger.ts        # Pino logger wrapper
@@ -39,7 +45,7 @@ backend/
 │   ├── chat-e2e.test.mjs    # End-to-end streaming/non-streaming chat tests
 │   ├── tool-call.test.mjs   # Function calling end-to-end tests
 │   └── api.test.ts          # Basic API endpoint tests
-├── config.json              # Static configuration (port, upstream URL, domain)
+├── config.json              # Static config (port, upstream URL, domain, checkin schedule)
 ├── ecosystem.config.cjs     # PM2 process manager config
 ├── package.json
 └── tsconfig.json
@@ -56,6 +62,7 @@ backend/
 - **test/** — Test scripts. Named `<feature>.test.mjs` for standalone Node.js scripts, or `<feature>.test.ts` for TypeScript tests.
 
 When adding a new feature:
+
 1. Add types in `types/` if needed
 2. Add business logic in `services/`
 3. Add route handler in `routes/`
@@ -80,3 +87,6 @@ When adding a new feature:
 - `routes/chat.ts` — See how `doStreamRequest()` wraps proxy with auth refresh
 - `services/proxy.ts` — See `streamRequest()` for callback-based HTTP pattern
 - `services/credential-store.ts` — See JSON file persistence with `persist()` helper
+- `services/checkin.ts` — See `runCheckin()` for the three-step checkin flow with token refresh retry
+- `services/scheduler.ts` — See `startScheduler()` for setTimeout-based daily scheduling with `unref()`
+- `routes/admin/checkin.ts` — See admin checkin run/status/by-id endpoints

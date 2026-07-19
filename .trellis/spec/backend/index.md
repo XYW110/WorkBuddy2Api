@@ -12,13 +12,14 @@ This directory contains guidelines for backend development, populated from real 
 
 ## Guidelines Index
 
-| Guide | Description | Status |
-|-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | ✅ Filled |
-| [Database Guidelines](./database-guidelines.md) | JSON persistence patterns (no database) | ✅ Filled |
-| [Error Handling](./error-handling.md) | Error types, handling strategies | ✅ Filled |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | ✅ Filled |
-| [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | ✅ Filled |
+| Guide                                           | Description                                    | Status    |
+| ----------------------------------------------- | ---------------------------------------------- | --------- |
+| [Directory Structure](./directory-structure.md) | Module organization and file layout            | ✅ Filled |
+| [Database Guidelines](./database-guidelines.md) | JSON persistence patterns (no database)        | ✅ Filled |
+| [Error Handling](./error-handling.md)           | Error types, handling strategies               | ✅ Filled |
+| [Quality Guidelines](./quality-guidelines.md)   | Code standards, forbidden patterns             | ✅ Filled |
+| [Logging Guidelines](./logging-guidelines.md)   | Structured logging, log levels                 | ✅ Filled |
+| [Checkin Scheduler](./checkin-scheduler.md)     | Daily checkin automation, scheduler, admin API | ✅ Filled |
 
 ---
 
