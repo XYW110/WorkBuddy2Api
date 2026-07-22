@@ -10,7 +10,10 @@
     "start:prod": "node dist/index.js",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "checkin:once": "tsx src/scripts/run-checkin-once.ts"
+    "checkin:once": "tsx src/scripts/run-checkin-once.ts",
+    "leaderboard:once": "tsx src/scripts/run-leaderboard-once.ts",
+    "leaderboard:probe": "tsx src/scripts/probe-llm-stats.ts",
+    "leaderboard:test": "tsx test/leaderboard.unit.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.0",

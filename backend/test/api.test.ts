@@ -9,11 +9,19 @@ const BASE = "http://127.0.0.1:3000";
 // admin 鉴权 token（优先读环境变量，本地兜底 test-token-123）
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? "test-token-123";
 
-interface TestResult {
+interface TestResult 
   name: string;
+
+
+
+
+
+
+
+
+
   pass: boolean;
   detail: string;
-}
 
 const results: TestResult[] = [];
 

@@ -8,5 +8,20 @@
     "hour": 9,
     "minute": 5,
     "runOnStartupIfMissed": true
+  },
+  "leaderboard": {
+    "enabled": true,
+    "hour": 3,
+    "minute": 0,
+    "runOnStartupIfMissed": true,
+    "primarySource": "llm-stats",
+    "fetchTimeoutMs": 15000,
+    "sources": [
+      { "name": "llm-stats", "url": "https://llm-stats.com/leaderboards/llm-leaderboard", "kind": "spec", "enabled": true },
+      { "name": "artificial-analysis", "url": "https://artificialanalysis.ai", "kind": "spec", "enabled": false },
+      { "name": "superclue", "url": "https://www.superclueai.com", "kind": "arena", "enabled": false },
+      { "name": "lmarena", "url": "https://arena.ai", "kind": "arena", "enabled": false },
+      { "name": "llmrank", "url": "https://llmrank.top", "kind": "arena", "enabled": false }
+    ]
   }
 }

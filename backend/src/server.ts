@@ -10,11 +10,12 @@ import { setupAdminAuth } from "./plugins/admin-auth.js";
 import { authRoutes } from "./routes/admin/auth.js";
 import { credentialRoutes } from "./routes/admin/credentials.js";
 import { checkinRoutes } from "./routes/admin/checkin.js";
+import { leaderboardRoutes } from "./routes/admin/leaderboard.js";
 import { apiKeyRoutes } from "./routes/admin/api-keys.js";
 import { quotaRoutes } from "./routes/admin/quota.js";
 import { chatRoutes } from "./routes/chat.js";
 import { modelRoutes, adminModelRoutes } from "./routes/models.js";
-import { startScheduler } from "./services/scheduler.js";
+import { startScheduler, startLeaderboardScheduler } from "./services/scheduler.js";
 
 export async function createServer() {
   const app = Fastify({
@@ -45,6 +46,7 @@ export async function createServer() {
       await adminScope.register(authRoutes);
       await adminScope.register(credentialRoutes);
       await adminScope.register(checkinRoutes);
+      await adminScope.register(leaderboardRoutes);
       await adminScope.register(apiKeyRoutes);
       await adminScope.register(quotaRoutes);
     },
@@ -107,6 +109,7 @@ export async function startServer() {
       `签到 API: http://${config.server.host}:${config.server.port}/admin/checkin`
     );
     startScheduler();
+    startLeaderboardScheduler();
   } catch (err) {
     logger.error({ err }, "服务启动失败");
     process.exit(1);

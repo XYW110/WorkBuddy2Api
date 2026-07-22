@@ -10,6 +10,7 @@ import {
 import { streamRequest, refreshAccessToken } from "../services/proxy.js";
 import { logger } from "../utils/logger.js";
 import { getCheapestModel } from "./models.js";
+import { loadAlias } from "../services/leaderboard/index.js";
 
 /** 带自动刷新重试的流式请求包装器 */
 function doStreamRequest(
@@ -78,17 +79,21 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
 
       let model = openaiReq.model || "auto";
 
-      // auto-cheapest 路由：替换为最便宜模型（免费优先，否则按倍率升序）
+      // auto-cheapest 路由：替换为每日筛选出的经济别名模型
       if (model === "auto-cheapest") {
-        const cheapest = getCheapestModel();
-        if (!cheapest) {
+        const state = loadAlias();
+        const target = state?.selectedModelId ?? getCheapestModel();
+        if (!target) {
           return reply
             .status(503)
-            .send({ error: "auto-cheapest: 无可用模型（无可定价模型）" });
+            .send({ error: "auto-cheapest: 无可用模型（筛选未产生结果且无兜底）" });
         }
-        openaiReq.model = cheapest;
-        model = cheapest;
-        logger.info({ cheapest }, "auto-cheapest 路由到最便宜模型");
+        openaiReq.model = target;
+        model = target;
+        logger.info(
+          { target, tier: state?.tier ?? "fallback", reason: state?.reason ?? null },
+          "auto-cheapest 路由到经济别名模型"
+        );
       }
 
       const codebuddyReq = openaiToCodeBuddy(openaiReq);

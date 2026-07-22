@@ -198,3 +198,43 @@ export interface ModelInfo {
   /** 展示用的倍率标签，如 "免费"、"0.06x"、"未定价" */
   creditsLabel: string;
 }
+
+// —— Leaderboard（经济型别名 auto-cheapest） ——
+
+/** 我们的模型在排行榜上的排序视图 */
+export interface ModelRankView {
+  id: string;
+  name: string;
+  owned_by: string;
+  credits: string;
+  creditsLabel: string;
+  /** 能力分（归一化 0-1，展示时乘 100 为能力指数） */
+  capability: number | null;
+  /** 能力百分位（0-1，越高越强） */
+  percentile: number | null;
+  /** 匹配到的榜单名（排障用） */
+  matchedName: string | null;
+  /** 每 1M token 输入/输出价格（美元），spec 源才有 */
+  inputPrice: number | null;
+  outputPrice: number | null;
+}
+
+export interface LeaderboardHistoryEntry {
+  updatedAt: string;
+  selectedModelId: string;
+  tier: "free" | "paid";
+  reason: string;
+  usedSources: string[];
+}
+
+/** GET /admin/leaderboard 返回的经济别名状态 */
+export interface LeaderboardState {
+  selectedModelId: string | null;
+  scores: Record<string, number>;
+  usedSources: string[];
+  tier: "free" | "paid" | null;
+  reason: string | null;
+  modelRanking: ModelRankView[];
+  updatedAt: string;
+  history: LeaderboardHistoryEntry[];
+}

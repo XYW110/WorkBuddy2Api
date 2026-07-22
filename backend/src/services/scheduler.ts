@@ -1,6 +1,7 @@
 import { logger } from "../utils/logger.js";
 import { config } from "../config.js";
 import { runCheckinWithActive } from "./checkin.js";
+import { runLeaderboard, loadAlias } from "./leaderboard/index.js";
 
 let timer: NodeJS.Timeout | null = null;
 let running = false;
@@ -91,5 +92,82 @@ export function stopScheduler(): void {
     clearTimeout(timer);
     timer = null;
     logger.info("签到调度已停止");
+  }
+}
+
+// ---- 排行榜每日筛选调度（复用签到调度模式） ----
+let lbTimer: NodeJS.Timeout | null = null;
+let lbRunning = false;
+
+async function runLeaderboardTask(): Promise<void> {
+  if (lbRunning) {
+    logger.warn("上一次排行榜任务仍在执行，跳过本轮");
+    return;
+  }
+  lbRunning = true;
+  try {
+    logger.info("定时排行榜筛选任务开始");
+    const state = await runLeaderboard();
+    logger.info(
+      { selected: state.selectedModelId, tier: state.tier, usedSources: state.usedSources },
+      "定时排行榜筛选任务结束"
+    );
+  } catch (err) {
+    logger.error({ err }, "定时排行榜筛选任务异常");
+  } finally {
+    lbRunning = false;
+  }
+}
+
+function lbAlreadyRanToday(): boolean {
+  try {
+    const state = loadAlias();
+    if (!state?.updatedAt) return false;
+    return state.updatedAt.slice(0, 10) === new Date().toISOString().slice(0, 10);
+  } catch {
+    return false;
+  }
+}
+
+function scheduleLeaderboardNext(hour: number, minute: number): void {
+  const delay = msUntilNext(hour, minute);
+  const nextAt = new Date(Date.now() + delay);
+  logger.info({ nextAt: nextAt.toISOString(), delayMs: delay }, "下次排行榜筛选计划已排定");
+
+  lbTimer = setTimeout(async () => {
+    await runLeaderboardTask();
+    scheduleLeaderboardNext(hour, minute);
+  }, delay);
+
+  if (typeof lbTimer.unref === "function") {
+    lbTimer.unref();
+  }
+}
+
+export function startLeaderboardScheduler(): void {
+  const lb = config.leaderboard;
+  if (!lb?.enabled) {
+    logger.info("每日排行榜调度未启用 (leaderboard.enabled=false)");
+    return;
+  }
+  const hour = lb.hour ?? 3;
+  const minute = lb.minute ?? 0;
+  logger.info({ hour, minute }, "启动每日排行榜筛选调度");
+
+  if (lb.runOnStartupIfMissed && !lbAlreadyRanToday()) {
+    // 启动后短延迟补跑一次（当日尚未运行才跑）
+    setTimeout(() => {
+      void runLeaderboardTask();
+    }, 5000);
+  }
+
+  scheduleLeaderboardNext(hour, minute);
+}
+
+export function stopLeaderboardScheduler(): void {
+  if (lbTimer) {
+    clearTimeout(lbTimer);
+    lbTimer = null;
+    logger.info("排行榜调度已停止");
   }
 }

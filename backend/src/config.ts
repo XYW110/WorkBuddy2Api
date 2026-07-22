@@ -22,11 +22,41 @@ interface CheckinConfig {
   runOnStartupIfMissed: boolean;
 }
 
+/** 单个排行榜数据源配置 */
+interface LeaderboardSourceConfig {
+  /** 唯一名，primarySource 引用它 */
+  name: string;
+  /** 抓取 URL */
+  url: string;
+  /** 数据集类型：arena=竞技场排名（含 mu/rank）；spec=模型规格（含基准分/价格） */
+  kind: "arena" | "spec";
+  /** 是否启用该源（单源失败不影响其他源） */
+  enabled: boolean;
+}
+
+interface LeaderboardConfig {
+  /** 总开关，默认关闭，生产显式开启 */
+  enabled: boolean;
+  /** 每日定时小时（0-23） */
+  hour: number;
+  /** 每日定时分钟（0-59） */
+  minute: number;
+  /** 启动后若当日尚未跑则短延迟补跑 */
+  runOnStartupIfMissed: boolean;
+  /** 主源名（primarySource 必须匹配某个 source.name） */
+  primarySource: string;
+  /** 单源抓取超时（毫秒） */
+  fetchTimeoutMs: number;
+  /** 数据源列表 */
+  sources: LeaderboardSourceConfig[];
+}
+
 interface AppConfig {
   server: ServerConfig;
   log: LogConfig;
   codebuddy: CodeBuddyConfig;
   checkin: CheckinConfig;
+  leaderboard: LeaderboardConfig;
 }
 
 const DEFAULT_CHECKIN: CheckinConfig = {
@@ -34,6 +64,22 @@ const DEFAULT_CHECKIN: CheckinConfig = {
   hour: 9,
   minute: 5,
   runOnStartupIfMissed: true,
+};
+
+const DEFAULT_LEADERBOARD: LeaderboardConfig = {
+  enabled: false,
+  hour: 3,
+  minute: 0,
+  runOnStartupIfMissed: true,
+  primarySource: "llm-stats",
+  fetchTimeoutMs: 15000,
+  sources: [
+    { name: "llm-stats", url: "https://llm-stats.com/leaderboards/llm-leaderboard", kind: "spec", enabled: true },
+    { name: "artificial-analysis", url: "https://artificialanalysis.ai", kind: "spec", enabled: false },
+    { name: "superclue", url: "https://www.superclueai.com", kind: "arena", enabled: false },
+    { name: "lmarena", url: "https://arena.ai", kind: "arena", enabled: false },
+    { name: "llmrank", url: "https://llmrank.top", kind: "arena", enabled: false },
+  ],
 };
 
 function loadConfig(): AppConfig {
@@ -61,6 +107,11 @@ function loadConfig(): AppConfig {
       domain: "www.codebuddy.cn",
     },
     checkin: { ...DEFAULT_CHECKIN, ...fileConfig.checkin },
+    leaderboard: {
+      ...DEFAULT_LEADERBOARD,
+      ...fileConfig.leaderboard,
+      sources: fileConfig.leaderboard?.sources ?? DEFAULT_LEADERBOARD.sources,
+    },
   };
 }
 

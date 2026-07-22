@@ -52,18 +52,37 @@ function onSizeChange(s: number) {
   void load()
 }
 
+const onceKeyVisible = ref(false)
+const onceKeyData = reactive({ name: '', id: '', key: '' })
+
 function showOnceKey(key: ApiKey) {
-  const text = [
-    `名称: ${key.name}`,
-    `ID: ${key.id}`,
-    `key: ${key.key}`,
-    '',
-    '请立即复制保存，关闭后列表仅显示脱敏值，无法再次查看明文。',
-  ].join('\n')
-  void ElMessageBox.alert(text, '明文 API Key（仅此一次）', {
-    confirmButtonText: '已复制并关闭',
-    type: 'warning',
-  })
+  onceKeyData.name = key.name
+  onceKeyData.id = key.id
+  onceKeyData.key = key.key
+  onceKeyVisible.value = true
+}
+
+async function copyOnceKey() {
+  const text = onceKeyData.key
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('已复制 API Key 到剪贴板')
+  } catch {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.top = '-9999px'
+    document.body.appendChild(ta)
+    ta.select()
+    try {
+      document.execCommand('copy')
+      ElMessage.success('已复制 API Key 到剪贴板')
+    } catch {
+      ElMessage.error('复制失败，请手动选择复制')
+    } finally {
+      document.body.removeChild(ta)
+    }
+  }
 }
 
 async function onCreate() {
@@ -209,6 +228,40 @@ onMounted(() => {
         <el-button type="primary" :loading="createSubmitting" @click="onCreate">创建</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="onceKeyVisible"
+      title="明文 API Key（仅此一次）"
+      width="480px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        title="请立即复制保存，关闭后列表仅显示脱敏值，无法再次查看明文。"
+        class="once-hint"
+      />
+      <div class="once-key">
+        <div class="row">
+          <span class="label">名称</span>
+          <code>{{ onceKeyData.name }}</code>
+        </div>
+        <div class="row">
+          <span class="label">ID</span>
+          <code>{{ onceKeyData.id }}</code>
+        </div>
+        <div class="row">
+          <span class="label">Key</span>
+          <code class="key-value">{{ onceKeyData.key }}</code>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="onceKeyVisible = false">关闭</el-button>
+        <el-button type="primary" @click="copyOnceKey">复制</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -241,5 +294,35 @@ onMounted(() => {
 .mask {
   font-size: 12px;
   word-break: break-all;
+}
+.once-hint {
+  margin-bottom: 12px;
+}
+.once-key {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.once-key .row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.once-key .label {
+  flex: 0 0 44px;
+  color: var(--el-text-color-secondary);
+  line-height: 22px;
+}
+.once-key code {
+  flex: 1;
+  background: var(--el-fill-color-light);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  word-break: break-all;
+}
+.once-key .key-value {
+  font-weight: 600;
+  color: var(--el-color-primary);
 }
 </style>

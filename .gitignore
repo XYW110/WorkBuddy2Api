@@ -109,6 +109,9 @@ dist-ssr/
 data/*.json
 backend/data/credentials.json
 logs/
+# 后端运行日志（不入库）
+backend/*.log
+backend/*.err
 legacy/
 *legacy*.py
 
