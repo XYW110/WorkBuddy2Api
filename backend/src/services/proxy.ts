@@ -4,6 +4,7 @@ import { logger } from "../utils/logger.js";
 import { config } from "../config.js";
 import type { Credential } from "../types/credential.js";
 import type { CodeBuddyChatRequest } from "../types/codebuddy.js";
+import type { QuotaParsed, QuotaResourceItem } from "../types/quota.js";
 
 /** 向上游 CodeBuddy API 发送流式请求，通过 callback 逐行返回 SSE data */
 export function streamRequest(
@@ -100,8 +101,144 @@ export function streamRequest(
   req.end();
 }
 
-/** 向上游查询凭证的积分额度，返回原始响应 JSON */
-export function queryQuota(credential: Credential): Promise<unknown> {
+/**
+ * 防御性解析上游额度响应，提取结构化数据。
+ * 兼容：CodeBuddy 包络 {code,data} + Response.Data.Accounts + Capacity* 字段，
+ * 以及旧腾讯云风格 UserResourceSet / PackageTotal。
+ * 解析失败返回 null，调用方降级为原始 JSON 展示。
+ */
+export function parseQuotaResponse(raw: unknown): QuotaParsed | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const outer = raw as Record<string, unknown>;
+
+  // 1) 解 CodeBuddy 包络层：{code, msg, data}
+  let root: Record<string, unknown> = outer;
+  if (
+    "code" in outer &&
+    "data" in outer &&
+    outer.data &&
+    typeof outer.data === "object"
+  ) {
+    root = outer.data as Record<string, unknown>;
+  }
+
+  // 2) 解 Response 层
+  const response = (root.Response ?? root) as Record<string, unknown>;
+  if (!response || typeof response !== "object") {
+    logger.warn(
+      { topKeys: Object.keys(outer) },
+      "额度响应无法定位 Response 层"
+    );
+    return null;
+  }
+
+  // 3) 提取资源列表（多路径兼容）
+  let resourceSet: unknown = null;
+  const dataNode = response.Data;
+
+  if (Array.isArray(response.UserResourceSet)) {
+    resourceSet = response.UserResourceSet;
+  } else if (Array.isArray(response.ResourceSet)) {
+    resourceSet = response.ResourceSet;
+  } else if (Array.isArray(response.Resources)) {
+    resourceSet = response.Resources;
+  } else if (Array.isArray(response.Accounts)) {
+    resourceSet = response.Accounts;
+  } else if (dataNode && typeof dataNode === "object") {
+    // Data 可能是对象容器 { TotalCount, Accounts, ... }
+    if (Array.isArray(dataNode)) {
+      resourceSet = dataNode;
+    } else {
+      const d = dataNode as Record<string, unknown>;
+      if (Array.isArray(d.Accounts)) resourceSet = d.Accounts;
+      else if (Array.isArray(d.UserResourceSet))
+        resourceSet = d.UserResourceSet;
+      else if (Array.isArray(d.ResourceSet)) resourceSet = d.ResourceSet;
+      else if (Array.isArray(d.Resources)) resourceSet = d.Resources;
+    }
+  }
+
+  if (!Array.isArray(resourceSet)) {
+    logger.warn(
+      {
+        topKeys: Object.keys(outer),
+        responseKeys: Object.keys(response),
+        dataKeys:
+          dataNode && typeof dataNode === "object" && !Array.isArray(dataNode)
+            ? Object.keys(dataNode as object)
+            : null,
+      },
+      "额度响应资源列表解析失败"
+    );
+    return null;
+  }
+
+  // totalCount 优先从 Data 容器取，其次是 Response 层，最后用数组长度
+  const dataObj =
+    dataNode && typeof dataNode === "object" && !Array.isArray(dataNode)
+      ? (dataNode as Record<string, unknown>)
+      : null;
+
+  const totalCount =
+    typeof dataObj?.TotalCount === "number"
+      ? dataObj.TotalCount
+      : typeof response.TotalCount === "number"
+      ? response.TotalCount
+      : resourceSet.length;
+
+  const resources: QuotaResourceItem[] = [];
+  let totalUsed = 0;
+  let totalRemaining = 0;
+  let totalAmount = 0;
+
+  for (const item of resourceSet) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as Record<string, unknown>;
+
+    // 真实上游字段：CapacitySize, CapacityUsed, CapacityRemain, ExpiredTime
+    const packageTotal = String(
+      r.CapacitySize ?? r.PackageTotal ?? r.Total ?? "0"
+    );
+    const packageUsed = String(
+      r.CapacityUsed ?? r.PackageUsed ?? r.Used ?? "0"
+    );
+    const packageRemaining = String(
+      r.CapacityRemain ?? r.PackageRemaining ?? r.Remaining ?? "0"
+    );
+
+    const numTotal = parseFloat(packageTotal) || 0;
+    const numUsed = parseFloat(packageUsed) || 0;
+    const numRemaining = parseFloat(packageRemaining) || 0;
+
+    totalUsed += numUsed;
+    totalRemaining += numRemaining;
+    totalAmount += numTotal;
+
+    resources.push({
+      resourceId: String(r.ResourceId ?? r.Id ?? ""),
+      status: typeof r.Status === "number" ? r.Status : 0,
+      packageTotal,
+      packageUsed,
+      packageRemaining,
+      expireTime: String(r.ExpiredTime ?? r.ExpireTime ?? r.Expire ?? ""),
+      packageName: r.PackageName ? String(r.PackageName) : undefined,
+    });
+  }
+
+  return {
+    totalCount,
+    resources,
+    totalUsed: String(totalUsed),
+    totalRemaining: String(totalRemaining),
+    totalAmount: String(totalAmount),
+  };
+}
+
+/** 向上游查询凭证的积分额度，返回原始 JSON + 解析后的结构化数据 */
+export function queryQuota(
+  credential: Credential
+): Promise<{ raw: unknown; parsed: QuotaParsed | null }> {
   return new Promise((resolve, reject) => {
     const baseUrl = config.codebuddy.baseUrl;
     // 真实额度端点（从 Reqable 抓包确认）
@@ -131,7 +268,7 @@ export function queryQuota(credential: Credential): Promise<unknown> {
       PageSize: 100,
       ProductCode: "p_tcaca",
       Status: [0, 3],
-      PackageStartTimeRangeBegin: "2024-12-01 21:25:00",
+      PackageStartTimeRangeBegin: "2020-01-01 00:00:00",
       PackageStartTimeRangeEnd: formatDateTime(now),
     });
 
@@ -153,7 +290,8 @@ export function queryQuota(credential: Credential): Promise<unknown> {
         res.on("end", () => {
           try {
             const data = JSON.parse(body);
-            resolve(data);
+            const parsed = parseQuotaResponse(data);
+            resolve({ raw: data, parsed });
           } catch {
             reject(new Error(`额度查询响应解析失败: ${body.slice(0, 200)}`));
           }

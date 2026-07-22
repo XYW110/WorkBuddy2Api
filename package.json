@@ -1,0 +1,7 @@
+{
+  "name": "workbuddy2api-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.js"
+  }
+}

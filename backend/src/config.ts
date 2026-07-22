@@ -38,30 +38,29 @@ const DEFAULT_CHECKIN: CheckinConfig = {
 
 function loadConfig(): AppConfig {
   const configPath = join(process.cwd(), "config.json");
+  let fileConfig: Partial<AppConfig> = {};
   try {
     const raw = readFileSync(configPath, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<AppConfig>;
-    return {
-      server: parsed.server ?? { port: 11434, host: "127.0.0.1" },
-      log: parsed.log ?? { level: "info" },
-      codebuddy: parsed.codebuddy ?? {
-        baseUrl: "https://copilot.tencent.com",
-        domain: "www.codebuddy.cn",
-      },
-      checkin: { ...DEFAULT_CHECKIN, ...parsed.checkin },
-    };
+    fileConfig = JSON.parse(raw) as Partial<AppConfig>;
   } catch {
-    // 默认配置
-    return {
-      server: { port: 11434, host: "127.0.0.1" },
-      log: { level: "info" },
-      codebuddy: {
-        baseUrl: "https://copilot.tencent.com",
-        domain: "www.codebuddy.cn",
-      },
-      checkin: { ...DEFAULT_CHECKIN },
-    };
+    // config.json 缺失时使用默认值
   }
+  // env 优先于 config.json：PORT/HOST 覆盖 server 段
+  const envPort = process.env.PORT ? Number(process.env.PORT) : undefined;
+  const envHost = process.env.HOST;
+  const server: ServerConfig = {
+    port: envPort ?? fileConfig.server?.port ?? 11434,
+    host: envHost ?? fileConfig.server?.host ?? "127.0.0.1",
+  };
+  return {
+    server,
+    log: fileConfig.log ?? { level: "info" },
+    codebuddy: fileConfig.codebuddy ?? {
+      baseUrl: "https://copilot.tencent.com",
+      domain: "www.codebuddy.cn",
+    },
+    checkin: { ...DEFAULT_CHECKIN, ...fileConfig.checkin },
+  };
 }
 
 export const config = loadConfig();

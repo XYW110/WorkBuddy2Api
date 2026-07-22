@@ -1,82 +1,100 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import * as store from "../../services/credential-store.js";
+import type { FastifyInstance } from "fastify";
+import { getActive, getById } from "../../services/credential-store.js";
 import {
-  getCheckinStatus,
   runCheckin,
   runCheckinWithActive,
+  getCheckinStatus,
 } from "../../services/checkin.js";
+import { listCheckinHistory } from "../../services/checkin-history-store.js";
+import type { CheckinResult } from "../../types/checkin.js";
 import { logger } from "../../utils/logger.js";
+import { sendOk, sendFail } from "../../utils/envelope.js";
+import { parsePagination, paginate } from "../../utils/pagination.js";
 
+/** 签到管理路由（注册在 /admin prefix scope 下） */
 export async function checkinRoutes(app: FastifyInstance): Promise<void> {
-  /** 手动执行完整签到流程 */
-  app.post(
-    "/admin/checkin",
-    async (_req: FastifyRequest, reply: FastifyReply) => {
-      try {
-        const result = await runCheckinWithActive();
-        const status = result.success ? 200 : 502;
-        return reply.status(status).send(result);
-      } catch (err: any) {
-        logger.error({ err }, "手动签到失败");
-        return reply.status(502).send({
+  /** POST /checkin — 手动触发签到（使用当前活跃凭证） */
+  app.post("/checkin", async (_req, reply) => {
+    try {
+      const result: CheckinResult = await runCheckinWithActive();
+      const status = result.success ? 200 : 502;
+      sendOk(reply, result, "ok", status);
+    } catch (err) {
+      logger.error({ err }, "手动签到时发生异常");
+      sendOk(
+        reply,
+        {
           success: false,
           skipped: false,
-          reason: err.message,
+          reason: (err as Error).message,
           executedAt: new Date().toISOString(),
-        });
-      }
+        },
+        "签到异常",
+        502
+      );
     }
-  );
+  });
 
-  /** 仅查询签到状态，不执行签到 */
-  app.get(
-    "/admin/checkin/status",
-    async (_req: FastifyRequest, reply: FastifyReply) => {
-      const credential = store.getActive();
-      if (!credential) {
-        return reply.status(404).send({ error: "无活跃凭证" });
-      }
-
-      try {
-        const status = await getCheckinStatus(credential);
-        return reply.send({
-          credentialId: credential.id,
-          credentialName: credential.name,
-          status: status.data,
-          raw: status,
-        });
-      } catch (err: any) {
-        // 401 时尝试让 runCheckin 的刷新路径覆盖；这里状态查询单独重试一次 runCheckin 不合适
-        // 直接返回错误，调用方可改用 POST /admin/checkin
-        logger.error({ err }, "查询签到状态失败");
-        return reply.status(502).send({ error: `查询失败: ${err.message}` });
-      }
+  /** GET /checkin/status — 查看签到调度状态 */
+  app.get("/checkin/status", async (_req, reply) => {
+    const credential = getActive();
+    if (!credential) {
+      sendFail(reply, 404, "无活跃凭证");
+      return;
     }
-  );
+    try {
+      const status = await getCheckinStatus(credential);
+      sendOk(reply, {
+        credentialId: credential.id,
+        credentialName: credential.name,
+        status: status.data,
+        raw: status,
+      });
+    } catch (err) {
+      // 直接返回错误，调用方可改用 POST /checkin 手动触发
+      sendFail(reply, 502, `查询失败: ${(err as Error).message}`);
+    }
+  });
 
-  /** 对指定凭证执行签到 */
-  app.post(
-    "/admin/checkin/:id",
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const { id } = req.params as { id: string };
-      const credential = store.getById(id);
-      if (!credential) {
-        return reply.status(404).send({ error: "凭证不存在" });
-      }
+  /** GET /checkin/history — 签到历史（最新在前，分页） */
+  app.get("/checkin/history", async (req, reply) => {
+    const query = req.query as { page?: string; pageSize?: string };
+    const { page, pageSize } = parsePagination(query.page, query.pageSize);
+    const all = listCheckinHistory();
+    const paged = paginate(all, page, pageSize);
+    sendOk(reply, {
+      items: paged.items,
+      total: paged.total,
+      page: paged.page,
+      pageSize: paged.pageSize,
+    });
+  });
 
-      try {
-        const result = await runCheckin(credential);
-        const status = result.success ? 200 : 502;
-        return reply.status(status).send(result);
-      } catch (err: any) {
-        logger.error({ err, id }, "指定凭证签到失败");
-        return reply.status(502).send({
+  /** POST /checkin/:id — 对指定凭证触发签到 */
+  app.post("/checkin/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const credential = getById(id);
+    if (!credential) {
+      sendFail(reply, 404, "凭证不存在");
+      return;
+    }
+    try {
+      const result: CheckinResult = await runCheckin(credential);
+      const status = result.success ? 200 : 502;
+      sendOk(reply, result, "ok", status);
+    } catch (err) {
+      logger.error({ err, credId: id }, "指定凭证签到时发生异常");
+      sendOk(
+        reply,
+        {
           success: false,
           skipped: false,
-          reason: err.message,
+          reason: (err as Error).message,
           executedAt: new Date().toISOString(),
-        });
-      }
+        },
+        "签到异常",
+        502
+      );
     }
-  );
+  });
 }

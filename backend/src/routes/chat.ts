@@ -9,6 +9,7 @@ import {
 } from "../services/translate.js";
 import { streamRequest, refreshAccessToken } from "../services/proxy.js";
 import { logger } from "../utils/logger.js";
+import { getCheapestModel } from "./models.js";
 
 /** 带自动刷新重试的流式请求包装器 */
 function doStreamRequest(
@@ -75,7 +76,21 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: "缺少 messages 字段" });
       }
 
-      const model = openaiReq.model || "auto";
+      let model = openaiReq.model || "auto";
+
+      // auto-cheapest 路由：替换为最便宜模型（免费优先，否则按倍率升序）
+      if (model === "auto-cheapest") {
+        const cheapest = getCheapestModel();
+        if (!cheapest) {
+          return reply
+            .status(503)
+            .send({ error: "auto-cheapest: 无可用模型（无可定价模型）" });
+        }
+        openaiReq.model = cheapest;
+        model = cheapest;
+        logger.info({ cheapest }, "auto-cheapest 路由到最便宜模型");
+      }
+
       const codebuddyReq = openaiToCodeBuddy(openaiReq);
       const isStreaming = openaiReq.stream === true;
 

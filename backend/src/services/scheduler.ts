@@ -6,7 +6,11 @@ let timer: NodeJS.Timeout | null = null;
 let running = false;
 
 /** 计算距下次本地 hour:minute 的毫秒数；若今日该时刻已过则排到次日 */
-export function msUntilNext(hour: number, minute: number, from = new Date()): number {
+export function msUntilNext(
+  hour: number,
+  minute: number,
+  from = new Date()
+): number {
   const next = new Date(from);
   next.setHours(hour, minute, 0, 0);
   if (next.getTime() <= from.getTime()) {
@@ -23,7 +27,7 @@ async function runCheckinTask(): Promise<void> {
   running = true;
   try {
     logger.info("定时签到任务开始");
-    const result = await runCheckinWithActive();
+    const result = await runCheckinWithActive("scheduled");
     logger.info(
       {
         success: result.success,

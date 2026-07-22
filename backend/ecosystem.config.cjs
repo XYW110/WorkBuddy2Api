@@ -8,6 +8,7 @@ module.exports = {
       interpreter: "none", // npx 不需要 node 解释器
       env: {
         NODE_ENV: "production",
+        ADMIN_TOKEN: process.env.ADMIN_TOKEN || "workbuddy2-admin-dev",
       },
       // 日志配置
       log_date_format: "YYYY-MM-DD HH:mm:ss",

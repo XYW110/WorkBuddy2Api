@@ -1,12 +1,15 @@
+import "dotenv/config";
 import { logger } from "../utils/logger.js";
 import { loadStore, addLocalCredential } from "../services/credential-store.js";
 import { loadLocalCredential } from "../services/credential-loader.js";
+import { loadCheckinHistoryStore } from "../services/checkin-history-store.js";
 import { runCheckinWithActive } from "../services/checkin.js";
 
 async function main(): Promise<void> {
   logger.info("=== run-checkin-once 调试脚本启动 ===");
 
   loadStore();
+  loadCheckinHistoryStore();
 
   const localCred = loadLocalCredential();
   if (localCred) {
@@ -17,7 +20,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const result = await runCheckinWithActive();
+  const result = await runCheckinWithActive("script");
   logger.info({ result }, "签到执行结果");
 
   // success=true （含 skipped=true 的「今日已签」）视为退出码 0

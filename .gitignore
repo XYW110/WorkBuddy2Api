@@ -118,7 +118,8 @@ legacy/
 .env
 .env.local
 .env.*.local
-
+# 后端 .env（本地开发，不提交；.env.example 可正常提交）
+backend/.env
 # ========================================
 # 系统文件
 # ========================================
@@ -180,3 +181,4 @@ backups/
 .sisyphus/
 demo.db
 /.snow/plan
+/backend/data

@@ -59,3 +59,26 @@ export interface CheckinResult {
   credentialId?: string;
   credentialName?: string;
 }
+
+/** 签到触发来源 */
+export type CheckinSource = "manual" | "scheduled" | "script";
+
+/** 单条签到历史（扁平字段对齐 CheckinResult） */
+export interface CheckinHistoryRecord {
+  id: string;
+  source: CheckinSource;
+  success: boolean;
+  skipped: boolean;
+  reason?: string;
+  credit?: number;
+  streakDays?: number;
+  totalCredits?: number;
+  todayCheckedIn?: boolean;
+  executedAt: string;
+  credentialId?: string;
+  credentialName?: string;
+}
+
+export interface CheckinHistoryStore {
+  records: CheckinHistoryRecord[];
+}

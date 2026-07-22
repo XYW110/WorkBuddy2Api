@@ -147,12 +147,12 @@ export function addLocalCredential(cred: Credential): void {
 export function updateCredentialToken(
   id: string,
   accessToken: string,
-  refreshToken: string
+  refreshToken?: string
 ): boolean {
   const cred = store.credentials.find((c) => c.id === id);
   if (!cred) return false;
   cred.accessToken = accessToken;
-  cred.refreshToken = refreshToken;
+  if (refreshToken !== undefined) cred.refreshToken = refreshToken;
   persist();
   logger.info({ id }, "凭证 token 已更新");
   return true;

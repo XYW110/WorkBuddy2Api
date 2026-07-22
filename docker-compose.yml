@@ -1,0 +1,30 @@
+services:
+  workbuddy2api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: workbuddy2api:latest
+    container_name: workbuddy2api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-11434}:11434"
+    environment:
+      # 必填：复制 .env.example 为 .env 后修改；未配置时 /admin/* 返回 503
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      PORT: "11434"
+      HOST: "0.0.0.0"
+      DATA_DIR: /app/data
+      STATIC_DIR: /app/public
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      NODE_ENV: production
+    volumes:
+      - workbuddy-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:11434/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  workbuddy-data:

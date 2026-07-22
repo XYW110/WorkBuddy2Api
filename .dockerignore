@@ -1,0 +1,49 @@
+# Git
+.git
+.github
+
+# AI 工具运行时
+.claude
+.codebuddy
+.codegraph
+.cursor
+.snow
+.trellis
+.mypy_cache
+
+# IDE
+.vscode
+.idea
+
+# Node
+node_modules
+**/node_modules
+**/dist
+
+# 环境变量
+.env
+.env.local
+backend/.env
+
+# 运行时数据
+backend/data
+data
+logs
+
+# 文档与脚本（不必要进镜像）
+docs
+scripts
+*.md
+
+# 备份与快照
+snapshots
+backups
+legacy
+assets
+
+# 系统文件
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak

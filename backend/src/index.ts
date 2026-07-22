@@ -1,13 +1,18 @@
+import "dotenv/config";
 import { logger } from "./utils/logger.js";
 import { loadLocalCredential } from "./services/credential-loader.js";
 import { loadStore, addLocalCredential } from "./services/credential-store.js";
+import { loadApiKeyStore } from "./services/api-key-store.js";
+import { loadCheckinHistoryStore } from "./services/checkin-history-store.js";
 import { startServer } from "./server.js";
 
 async function main() {
   logger.info("=== WorkBuddy2Api 启动中 ===");
 
-  // 1. 加载凭证存储
+  // 1. 加载凭证存储、管理 API Key 与签到历史
   loadStore();
+  loadApiKeyStore();
+  loadCheckinHistoryStore();
 
   // 2. 尝试从本地文件加载凭证
   const localCred = loadLocalCredential();

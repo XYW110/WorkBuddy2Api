@@ -1,0 +1,9 @@
+{
+  "apiBase": "",
+  "brandName": "WorkBuddy Admin",
+  "features": {
+    "checkin": true,
+    "quota": true,
+    "apiKeys": true
+  }
+}

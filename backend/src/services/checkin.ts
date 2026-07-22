@@ -5,11 +5,13 @@ import { config } from "../config.js";
 import type { Credential } from "../types/credential.js";
 import type {
   CheckinResult,
+  CheckinSource,
   CheckinStatusResponse,
   DailyCheckinResponse,
 } from "../types/checkin.js";
 import { refreshAccessToken } from "./proxy.js";
 import * as store from "./credential-store.js";
+import { appendCheckinHistory } from "./checkin-history-store.js";
 
 const STATUS_PATH = "/v2/billing/meter/checkin-activity-status";
 const CHECKIN_PATH = "/v2/billing/meter/daily-checkin";
@@ -70,9 +72,7 @@ function postEmptyJson(
             resolve({ statusCode, data });
           } catch {
             reject(
-              new Error(
-                `签到接口响应解析失败 (${path}): ${body.slice(0, 200)}`
-              )
+              new Error(`签到接口响应解析失败 (${path}): ${body.slice(0, 200)}`)
             );
           }
         });
@@ -140,8 +140,9 @@ function isAuthError(err: unknown): boolean {
   return !!(err as { authError?: boolean })?.authError;
 }
 
-/** 完整签到流程：查状态 → 未签则签 → 再校验；401 时刷新重试一次 */
-export async function runCheckin(
+/** 完整签到流程核心：查状态 → 未签则签 → 再校验；401 时刷新重试一次。
+ *  仅负责执行与返回结果，不写历史；历史由外层 runCheckin 统一记录。 */
+async function runCheckinCore(
   credential: Credential,
   retried = false
 ): Promise<CheckinResult> {
@@ -235,7 +236,7 @@ export async function runCheckin(
     if (!retried && isAuthError(err)) {
       try {
         const refreshed = await tryRefresh(credential);
-        return runCheckin(refreshed, true);
+        return runCheckinCore(refreshed, true);
       } catch (refreshErr) {
         logger.error({ err: refreshErr }, "签到 token 刷新失败");
         return {
@@ -261,16 +262,30 @@ export async function runCheckin(
   }
 }
 
+/** 完整签到流程：执行 core 并将最终结果写入历史（单点记录，递归重试不重复写）。 */
+export async function runCheckin(
+  credential: Credential,
+  source: CheckinSource = "manual"
+): Promise<CheckinResult> {
+  const result = await runCheckinCore(credential);
+  appendCheckinHistory(result, source);
+  return result;
+}
+
 /** 使用当前活跃凭证执行签到 */
-export async function runCheckinWithActive(): Promise<CheckinResult> {
+export async function runCheckinWithActive(
+  source: CheckinSource = "manual"
+): Promise<CheckinResult> {
   const credential = store.getActive();
   if (!credential) {
-    return {
+    const result: CheckinResult = {
       success: false,
       skipped: true,
       reason: "无活跃凭证",
       executedAt: new Date().toISOString(),
     };
+    appendCheckinHistory(result, source);
+    return result;
   }
-  return runCheckin(credential);
+  return runCheckin(credential, source);
 }
