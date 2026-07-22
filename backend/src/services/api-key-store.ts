@@ -22,6 +22,10 @@ export function loadApiKeyStore(): void {
       logger.warn({ err }, "api-keys 存储文件解析失败，使用空存储");
       store = { keys: [] };
     }
+  } else {
+    // 首次启动时自动创建空存储文件
+    persist();
+    logger.info(`已初始化 api-keys 存储文件: ${filePath}`);
   }
 }
 

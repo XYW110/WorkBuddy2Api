@@ -45,16 +45,17 @@ function loadConfig(): AppConfig {
   } catch {
     // config.json 缺失时使用默认值
   }
-  // env 优先于 config.json：PORT/HOST 覆盖 server 段
-  const envPort = process.env.PORT ? Number(process.env.PORT) : undefined;
-  const envHost = process.env.HOST;
+  // server 和 log 走环境变量（12-factor），config.json 仅保留业务配置
   const server: ServerConfig = {
-    port: envPort ?? fileConfig.server?.port ?? 11434,
-    host: envHost ?? fileConfig.server?.host ?? "127.0.0.1",
+    port: process.env.PORT ? Number(process.env.PORT) : 11434,
+    host: process.env.HOST ?? "127.0.0.1",
+  };
+  const log: LogConfig = {
+    level: process.env.LOG_LEVEL ?? "info",
   };
   return {
     server,
-    log: fileConfig.log ?? { level: "info" },
+    log,
     codebuddy: fileConfig.codebuddy ?? {
       baseUrl: "https://copilot.tencent.com",
       domain: "www.codebuddy.cn",

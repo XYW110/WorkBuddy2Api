@@ -17,6 +17,10 @@ export function loadStore(): void {
     } catch (err) {
       logger.warn({ err }, "凭证存储文件解析失败，使用空存储");
     }
+  } else {
+    // 首次启动时自动创建空存储文件，避免 volume 目录为空
+    persist();
+    logger.info(`已初始化凭证存储文件: ${filePath}`);
   }
 }
 

@@ -29,6 +29,10 @@ export function loadCheckinHistoryStore(): void {
       logger.warn({ err }, "签到历史文件解析失败，使用空存储");
       store = { records: [] };
     }
+  } else {
+    // 首次启动时自动创建空存储文件
+    persist();
+    logger.info(`已初始化签到历史文件: ${filePath}`);
   }
 }
 

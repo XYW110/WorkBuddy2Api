@@ -1,15 +1,15 @@
 services:
-  workbuddy2api:
+  backend:
+    image: ghcr.io/xyw110/workbuddy2api:latest
     build:
       context: .
       dockerfile: Dockerfile
-    image: workbuddy2api:latest
-    container_name: workbuddy2api
-    restart: unless-stopped
+    command: node dist/index.js
     ports:
       - "${PORT:-11434}:11434"
+    volumes:
+      - ${DATA_DIR:-/opt/workbuddy2api}:/app/data
     environment:
-      # 必填：复制 .env.example 为 .env 后修改；未配置时 /admin/* 返回 503
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       PORT: "11434"
       HOST: "0.0.0.0"
@@ -17,14 +17,16 @@ services:
       STATIC_DIR: /app/public
       CORS_ORIGIN: ${CORS_ORIGIN:-}
       NODE_ENV: production
-    volumes:
-      - workbuddy-data:/app/data
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:11434/health"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:11434/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
+    restart: unless-stopped
+    networks:
+      - 1panel-network
 
-volumes:
-  workbuddy-data:
+networks:
+  1panel-network:
+    external: true
