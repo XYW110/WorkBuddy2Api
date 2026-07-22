@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { Credential } from "../../types/credential.js";
 import {
   getAll,
@@ -8,6 +8,8 @@ import {
   removeCredential,
   activateCredential,
   addLocalCredential,
+  getStore,
+  importStore,
 } from "../../services/credential-store.js";
 import { queryQuota } from "../../services/proxy.js";
 import { generateId } from "../../utils/env.js";
@@ -15,6 +17,42 @@ import { sendOk, sendCreated, sendFail } from "../../utils/envelope.js";
 import { maskCredential } from "../../utils/mask.js";
 import { parsePagination, paginate } from "../../utils/pagination.js";
 import { logger } from "../../utils/logger.js";
+
+/** 读取并解析上传的 JSON 文件（multipart 字段名: file）
+ *  - 缺文件 → 422；超 1MB → 413；JSON 非法 → 422
+ *  - 成功返回解析后的对象；失败时已回写 reply 并返回 null
+ */
+async function readUploadJson(
+  req: FastifyRequest,
+  reply: FastifyReply
+): Promise<unknown | null> {
+  let fileBuffer: Buffer | null = null;
+  try {
+    const part = await req.file();
+    if (!part) {
+      sendFail(reply, 422, "缺少上传文件（字段名: file）");
+      return null;
+    }
+    fileBuffer = await part.toBuffer();
+  } catch (err) {
+    const msg = (err as Error).message ?? "";
+    // @fastify/multipart 超限会抛出含 file too large / FST_REQ_FILE_TOO_LARGE 的错误
+    if (msg.includes("too large") || msg.includes("FST_REQ_FILE_TOO_LARGE")) {
+      sendFail(reply, 413, "上传文件过大（限制 1MB）");
+    } else {
+      logger.error({ err }, "凭证上传读取失败");
+      sendFail(reply, 422, `上传文件读取失败: ${msg}`);
+    }
+    return null;
+  }
+
+  try {
+    return JSON.parse(fileBuffer.toString("utf-8"));
+  } catch (err) {
+    sendFail(reply, 422, `JSON 解析失败: ${(err as Error).message}`);
+    return null;
+  }
+}
 
 /** 凭据上传/创建载荷的统一校验与构造逻辑 */
 function createCredentialFromPayload(input: {
@@ -118,38 +156,8 @@ export async function credentialRoutes(app: FastifyInstance): Promise<void> {
    *  - 成功 201 + 一次明文；缺文件/JSON 非法 → 422；超 1MB → 413
    */
   app.post("/credentials/upload", async (req, reply) => {
-    let fileBuffer: Buffer | null = null;
-    try {
-      const part = await req.file();
-      if (!part) {
-        sendFail(reply, 422, "缺少上传文件（字段名: file）");
-        return;
-      }
-      fileBuffer = await part.toBuffer();
-    } catch (err) {
-      const msg = (err as Error).message ?? "";
-      // @fastify/multipart 超限会抛出含 file too large / FST_REQ_FILE_TOO_LARGE 的错误
-      if (msg.includes("too large") || msg.includes("FST_REQ_FILE_TOO_LARGE")) {
-        sendFail(reply, 413, "上传文件过大（限制 1MB）");
-      } else {
-        logger.error({ err }, "凭证上传读取失败");
-        sendFail(reply, 422, `上传文件读取失败: ${msg}`);
-      }
-      return;
-    }
-
-    let payload: unknown;
-    try {
-      payload = JSON.parse(fileBuffer.toString("utf-8"));
-    } catch (err) {
-      sendFail(reply, 422, `JSON 解析失败: ${(err as Error).message}`);
-      return;
-    }
-
-    if (!payload || typeof payload !== "object") {
-      sendFail(reply, 422, "上传内容必须是 JSON 对象");
-      return;
-    }
+    const payload = await readUploadJson(req, reply);
+    if (payload === null) return; // 错误已在 helper 内回写
 
     const result = createCredentialFromPayload(
       payload as Record<string, string>
@@ -164,6 +172,64 @@ export async function credentialRoutes(app: FastifyInstance): Promise<void> {
       "凭证已上传并添加"
     );
     sendCreated(reply, result.cred, "凭证上传成功");
+  });
+
+  /** GET /credentials/export — 导出整库快照（含明文密钥，admin-only）
+   *  - 返回 { credentials:[...], activeId } 原样 JSON，触发浏览器下载
+   *  - 日志仅记条数，绝不打印明文
+   */
+  app.get("/credentials/export", async (_req, reply) => {
+    const snapshot = getStore();
+    logger.info(
+      { count: snapshot.credentials.length, activeId: snapshot.activeId },
+      "凭证快照已导出"
+    );
+    reply
+      .header("Content-Type", "application/json")
+      .header(
+        "Content-Disposition",
+        'attachment; filename="credentials-backup.json"'
+      )
+      .send(JSON.stringify(snapshot, null, 2));
+  });
+
+  /** POST /credentials/import — 导入整库快照（admin-only）
+   *  - multipart 字段名: file
+   *  - 文件结构: { credentials: Credential[], activeId?: string|null }
+   *  - 按 id 合并去重（存在→更新，不存在→新增），并还原 activeId
+   *  - 返回 { added, updated, activeId }
+   */
+  app.post("/credentials/import", async (req, reply) => {
+    const payload = await readUploadJson(req, reply);
+    if (payload === null) return;
+
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      !Array.isArray((payload as Record<string, unknown>).credentials)
+    ) {
+      sendFail(
+        reply,
+        422,
+        "备份文件结构无效：需包含 credentials 数组（可含 activeId）"
+      );
+      return;
+    }
+
+    const snapshot = payload as {
+      credentials: import("../../types/credential.js").Credential[];
+      activeId?: string | null;
+    };
+    const { added, updated } = importStore({
+      credentials: snapshot.credentials,
+      activeId: snapshot.activeId ?? null,
+    });
+
+    sendOk(
+      reply,
+      { added, updated, activeId: getActive()?.id ?? null },
+      `导入完成：新增 ${added}，更新 ${updated}`
+    );
   });
 
   /** DELETE /credentials/:id — 删除指定凭证

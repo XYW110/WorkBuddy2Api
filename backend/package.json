@@ -13,7 +13,8 @@
     "checkin:once": "tsx src/scripts/run-checkin-once.ts",
     "leaderboard:once": "tsx src/scripts/run-leaderboard-once.ts",
     "leaderboard:probe": "tsx src/scripts/probe-llm-stats.ts",
-    "leaderboard:test": "tsx test/leaderboard.unit.ts"
+    "leaderboard:test": "tsx test/leaderboard.unit.ts",
+    "credentials:test": "tsx test/credentials.unit.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.0",

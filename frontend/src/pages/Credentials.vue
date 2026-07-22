@@ -9,6 +9,8 @@ import {
   deleteCredential,
   activateCredential,
   getCredentialQuota,
+  exportCredentials,
+  importCredentials,
 } from "../api/credentials";
 import type { AdminQuotaData, Credential, QuotaParsed } from "../api/types";
 
@@ -25,6 +27,10 @@ const createForm = reactive({ name: "", key: "" });
 
 const uploadSubmitting = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
+
+const exportSubmitting = ref(false);
+const importSubmitting = ref(false);
+const importFileInputRef = ref<HTMLInputElement | null>(null);
 
 const quotaVisible = ref(false);
 const quotaLoading = ref(false);
@@ -134,6 +140,49 @@ async function onFileChange(ev: Event) {
   }
 }
 
+/** 导出整库快照（含明文密钥）为 credentials-backup.json */
+async function onExport() {
+  exportSubmitting.value = true;
+  try {
+    const blob = await exportCredentials();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "credentials-backup.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    ElMessage.success("已导出备份文件（含明文密钥，请妥善保管）");
+  } catch (e) {
+    ElMessage.error(errMsg(e));
+  } finally {
+    exportSubmitting.value = false;
+  }
+}
+
+function triggerImport() {
+  importFileInputRef.value?.click();
+}
+
+/** 导入整库快照：按 id 合并去重，并还原活跃态 */
+async function onImportFileChange(ev: Event) {
+  const input = ev.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  importSubmitting.value = true;
+  try {
+    const res = await importCredentials(file);
+    ElMessage.success(`导入完成：新增 ${res.added}，更新 ${res.updated}`);
+    await load();
+  } catch (e) {
+    ElMessage.error(errMsg(e));
+  } finally {
+    importSubmitting.value = false;
+  }
+}
+
 async function onActivate(row: Credential) {
   try {
     await activateCredential(row.id);
@@ -233,12 +282,25 @@ onMounted(() => {
         <el-button :loading="uploadSubmitting" @click="triggerUpload"
           >上传 JSON</el-button
         >
+        <el-button :loading="exportSubmitting" @click="onExport"
+          >导出备份</el-button
+        >
+        <el-button :loading="importSubmitting" @click="triggerImport"
+          >导入备份</el-button
+        >
         <input
           ref="fileInputRef"
           type="file"
           accept=".json,application/json"
           class="hidden-file"
           @change="onFileChange"
+        />
+        <input
+          ref="importFileInputRef"
+          type="file"
+          accept=".json,application/json"
+          class="hidden-file"
+          @change="onImportFileChange"
         />
       </div>
     </div>

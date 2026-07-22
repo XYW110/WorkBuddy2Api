@@ -39,6 +39,67 @@ export function getAll(): Credential[] {
   return store.credentials;
 }
 
+/** 获取完整存储（含明文 + activeId），用于整库快照导出 */
+export function getStore(): CredentialStore {
+  return store;
+}
+
+/**
+ * 导入整库快照，按 id 合并去重：
+ * - 已存在（id 相同）→ 就地覆盖全部字段（含 isActive/source）
+ * - 不存在 → 新增（保留快照中的原 id）
+ * 合并完成后若 snapshot.activeId 仍存在则还原为活跃态。
+ * 返回新增/更新计数。
+ */
+export function importStore(snapshot: CredentialStore): {
+  added: number;
+  updated: number;
+} {
+  let added = 0;
+  let updated = 0;
+
+  for (const incoming of snapshot.credentials) {
+    if (!incoming?.id) continue;
+    const existing = store.credentials.find((c) => c.id === incoming.id);
+    if (existing) {
+      existing.name = incoming.name;
+      existing.type = incoming.type;
+      existing.key = incoming.key;
+      existing.accessToken = incoming.accessToken;
+      existing.refreshToken = incoming.refreshToken;
+      existing.uid = incoming.uid;
+      existing.isActive = incoming.isActive ?? false;
+      existing.source = incoming.source;
+      updated += 1;
+    } else {
+      store.credentials.push({
+        id: incoming.id,
+        name: incoming.name,
+        type: incoming.type,
+        accessToken: incoming.accessToken,
+        refreshToken: incoming.refreshToken,
+        uid: incoming.uid,
+        key: incoming.key,
+        isActive: incoming.isActive ?? false,
+        source: incoming.source,
+      });
+      added += 1;
+    }
+  }
+
+  // 还原活跃态（仅当快照的 activeId 在合并后仍存在）
+  if (snapshot.activeId && getById(snapshot.activeId)) {
+    activateCredential(snapshot.activeId);
+  }
+
+  persist();
+  logger.info(
+    { added, updated, activeId: snapshot.activeId },
+    "凭证快照已导入"
+  );
+  return { added, updated };
+}
+
 /** 根据 id 获取凭证 */
 export function getById(id: string): Credential | undefined {
   return store.credentials.find((c) => c.id === id);

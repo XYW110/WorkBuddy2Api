@@ -9,6 +9,13 @@ import type {
   PaginationQuery,
 } from './types'
 
+/** POST /admin/credentials/import 返回：新增/更新计数与当前活跃 id */
+export interface ImportResult {
+  added: number
+  updated: number
+  activeId: string | null
+}
+
 /** GET /admin/credentials — 列表（字段已就地 mask，多 activeId） */
 export async function listCredentials(
   q?: PaginationQuery,
@@ -59,6 +66,25 @@ export async function getCredentialQuota(
 ): Promise<AdminQuotaData> {
   const res = await apiClient.get<AdminQuotaData>(
     `/admin/credentials/${id}/quota`,
+  )
+  return res.data
+}
+
+/** GET /admin/credentials/export — 整库快照下载（blob 透传，data 即 Blob） */
+export async function exportCredentials(): Promise<Blob> {
+  const res = await apiClient.get<Blob>('/admin/credentials/export', {
+    responseType: 'blob',
+  })
+  return res.data
+}
+
+/** POST /admin/credentials/import — 整库快照导入（multipart file，按 id 合并） */
+export async function importCredentials(file: File): Promise<ImportResult> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await apiClient.post<ImportResult>(
+    '/admin/credentials/import',
+    fd,
   )
   return res.data
 }
