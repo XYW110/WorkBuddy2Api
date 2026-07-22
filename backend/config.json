@@ -1,0 +1,19 @@
+{
+  "server": {
+    "port": 3000,
+    "host": "127.0.0.1"
+  },
+  "log": {
+    "level": "info"
+  },
+  "codebuddy": {
+    "baseUrl": "https://copilot.tencent.com",
+    "domain": "www.codebuddy.cn"
+  },
+  "checkin": {
+    "enabled": true,
+    "hour": 9,
+    "minute": 5,
+    "runOnStartupIfMissed": true
+  }
+}

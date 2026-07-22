@@ -152,7 +152,7 @@ $RECYCLE.BIN/
 
 
 .env
-config.json
+# config.json 含默认值非敏感信息，环境变量可覆盖，Docker 构建需要
 .claude
 .agents
 .vscode
