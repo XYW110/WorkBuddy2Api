@@ -38,3 +38,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 2: credentials 整库快照导出/导入备份闭环
+
+**Date**: 2026-07-23
+**Task**: credentials 整库快照导出/导入备份闭环
+**Branch**: `master`
+
+### Summary
+
+为 Credentials 页面新增导出备份与导入备份闭环：credential-store 新增 getStore()/importStore()（按 id 合并去重、还原 activeId、仅记统计日志不打印明文）；admin/credentials 路由新增 GET /credentials/export（下载 credentials-backup.json）与 POST /credentials/import（multipart 快照合并，返回 added/updated/activeId），置于 /admin scope 下自动 admin-only；前端 api 新增 exportCredentials/importCredentials 与 ImportResult 类型，Credentials.vue 新增导出/导入备份按钮（保留原上传 JSON 单条添加）；新增 test/credentials.unit.ts round-trip 单测与 credentials:test 脚本。后端 tsc、单测与前端 vue-tsc 均通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `672cb4c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
