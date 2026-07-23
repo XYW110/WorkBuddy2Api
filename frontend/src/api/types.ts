@@ -208,6 +208,24 @@ export interface ModelInfo {
   creditsNum: number;
   /** 展示用的倍率标签，如 "免费"、"0.06x"、"未定价" */
   creditsLabel: string;
+  /** 模型中文描述 */
+  descriptionZh?: string;
+  /** 单次请求允许的最大内容大小（字节） */
+  maxAllowedSize?: number | null;
+  /** 最大输入 token 数 */
+  maxInputTokens?: number | null;
+  /** 最大输出 token 数 */
+  maxOutputTokens?: number | null;
+  /** 是否支持图片输入 */
+  supportsImages?: boolean;
+  /** 是否支持工具调用 */
+  supportsToolCall?: boolean;
+  /** 是否支持推理（reasoning/thinking） */
+  supportsReasoning?: boolean;
+  /** 是否为默认模型 */
+  isDefault?: boolean;
+  /** 标签数组 */
+  tags?: string[];
 }
 
 // —— Leaderboard（经济型别名 auto-cheapest） ——
@@ -248,4 +266,20 @@ export interface LeaderboardState {
   modelRanking: ModelRankView[];
   updatedAt: string;
   history: LeaderboardHistoryEntry[];
+}
+
+// —— Usage Stats（API Key 调用统计） ——
+
+export interface UsageEntry {
+  credentialId: string;
+  credentialName: string;
+  model: string;
+  callCount: number;
+  promptTokens: number;
+  completionTokens: number;
+}
+
+export interface UsageStatsResponse {
+  entries: UsageEntry[];
+  updatedAt: string;
 }

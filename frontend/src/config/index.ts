@@ -16,6 +16,7 @@ export function loadEnvConfig(): AdminUiConfig {
       quota: envFlag(import.meta.env.VITE_FEATURE_QUOTA, true),
       apiKeys: envFlag(import.meta.env.VITE_FEATURE_API_KEYS, true),
       models: envFlag(import.meta.env.VITE_FEATURE_MODELS, true),
+      stats: envFlag(import.meta.env.VITE_FEATURE_STATS, true),
     },
   };
 }
@@ -39,6 +40,7 @@ export async function loadRuntimeConfig(): Promise<AdminUiConfig> {
         quota: json.features?.quota ?? base.features.quota,
         apiKeys: json.features?.apiKeys ?? base.features.apiKeys,
         models: json.features?.models ?? base.features.models,
+        stats: json.features?.stats ?? base.features.stats,
       },
     };
   } catch {

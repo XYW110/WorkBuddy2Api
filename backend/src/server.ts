@@ -13,9 +13,12 @@ import { checkinRoutes } from "./routes/admin/checkin.js";
 import { leaderboardRoutes } from "./routes/admin/leaderboard.js";
 import { apiKeyRoutes } from "./routes/admin/api-keys.js";
 import { quotaRoutes } from "./routes/admin/quota.js";
+import { statsRoutes } from "./routes/admin/stats.js";
 import { chatRoutes } from "./routes/chat.js";
 import { modelRoutes, adminModelRoutes } from "./routes/models.js";
 import { startScheduler, startLeaderboardScheduler } from "./services/scheduler.js";
+import { loadStats, startPersistTimer } from "./services/usage-stats.js";
+import { refreshModelsInBackground } from "./services/model-fetcher.js";
 
 export async function createServer() {
   const app = Fastify({
@@ -49,6 +52,7 @@ export async function createServer() {
       await adminScope.register(leaderboardRoutes);
       await adminScope.register(apiKeyRoutes);
       await adminScope.register(quotaRoutes);
+      await adminScope.register(statsRoutes);
     },
     { prefix: "/admin" }
   );
@@ -108,6 +112,9 @@ export async function startServer() {
     logger.info(
       `签到 API: http://${config.server.host}:${config.server.port}/admin/checkin`
     );
+    loadStats();
+    startPersistTimer();
+    refreshModelsInBackground();
     startScheduler();
     startLeaderboardScheduler();
   } catch (err) {

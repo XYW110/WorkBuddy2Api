@@ -19,6 +19,7 @@ const allItems: MenuItem[] = [
   { index: "/checkin", label: "签到", feature: "checkin" },
   { index: "/quota", label: "额度查询", feature: "quota" },
   { index: "/models", label: "模型列表", feature: "models" },
+  { index: "/stats", label: "调用统计", feature: "stats" },
 ];
 
 const visibleItems = computed(() =>

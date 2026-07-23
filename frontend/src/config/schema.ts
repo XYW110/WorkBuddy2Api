@@ -4,6 +4,7 @@ export interface AdminUiFeatures {
   quota: boolean;
   apiKeys: boolean;
   models: boolean;
+  stats: boolean;
 }
 
 export interface AdminUiConfig {
@@ -22,5 +23,6 @@ export const DEFAULT_UI_CONFIG: AdminUiConfig = {
     quota: true,
     apiKeys: true,
     models: true,
+    stats: true,
   },
 };

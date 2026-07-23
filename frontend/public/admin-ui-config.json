@@ -4,6 +4,7 @@
   "features": {
     "checkin": true,
     "quota": true,
-    "apiKeys": true
+    "apiKeys": true,
+    "stats": true
   }
 }

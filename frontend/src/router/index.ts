@@ -60,6 +60,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import("../pages/Models.vue"),
         meta: { feature: "models" },
       },
+      {
+        path: "stats",
+        name: "Stats",
+        component: () => import("../pages/Stats.vue"),
+        meta: { feature: "stats" },
+      },
     ],
   },
   {

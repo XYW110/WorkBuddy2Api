@@ -11,6 +11,14 @@ import { streamRequest, refreshAccessToken } from "../services/proxy.js";
 import { logger } from "../utils/logger.js";
 import { getCheapestModel } from "./models.js";
 import { loadAlias } from "../services/leaderboard/index.js";
+import { recordUsage, estimateTokens } from "../services/usage-stats.js";
+
+/** 从 OpenAI 请求消息中提取纯文本内容（用于 token 估算） */
+function extractPromptText(messages: OpenAIChatRequest["messages"]): string {
+  return messages
+    .map((m) => (typeof m.content === "string" ? m.content : ""))
+    .join("\n");
+}
 
 /** 带自动刷新重试的流式请求包装器 */
 function doStreamRequest(
@@ -99,10 +107,14 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       const codebuddyReq = openaiToCodeBuddy(openaiReq);
       const isStreaming = openaiReq.stream === true;
 
+      // 提取 prompt 文本用于 token 估算
+      const promptText = extractPromptText(openaiReq.messages);
+      const promptTokens = estimateTokens(promptText);
+
       logger.info({ model, stream: isStreaming }, "收到聊天请求");
 
       if (isStreaming) {
-        // 流式响应：直接 SSE 逐块转发
+        // 流式响应：直接 SSE 逐块转发，同时收集 completion 文本
         reply.raw.writeHead(200, {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
@@ -110,6 +122,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         });
 
         let chunkIndex = 0;
+        let completionText = "";
 
         doStreamRequest(
           cred,
@@ -121,10 +134,34 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
               chunkIndex++
             );
             if (sse) {
+              // 从 SSE 中提取 content 用于统计
+              try {
+                const jsonStr = sse.replace(/^data: /, "").trim();
+                if (jsonStr) {
+                  const parsed = JSON.parse(jsonStr);
+                  const delta = parsed.choices?.[0]?.delta;
+                  if (delta?.content) {
+                    completionText += delta.content;
+                  }
+                }
+              } catch { /* 忽略解析失败 */ }
               reply.raw.write(sse);
             }
           },
           () => {
+            // 请求成功完成，记录统计
+            const completionTokens = estimateTokens(completionText);
+            recordUsage(
+              cred.id,
+              cred.name,
+              model,
+              promptTokens,
+              completionTokens
+            );
+            logger.info(
+              { credName: cred.name, model, promptTokens, completionTokens },
+              "AI 调用统计已记录"
+            );
             reply.raw.write(createDoneSSE());
             reply.raw.end();
           },
@@ -166,6 +203,22 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
             },
             () => {
               const response = chunksToOpenAIResponse(chunks, model);
+              // 从聚合结果中提取 completion 文本统计
+              const message = response.choices?.[0]?.message;
+              const completionText =
+                typeof message?.content === "string" ? message.content : "";
+              const completionTokens = estimateTokens(completionText);
+              recordUsage(
+                cred.id,
+                cred.name,
+                model,
+                promptTokens,
+                completionTokens
+              );
+              logger.info(
+                { credName: cred.name, model, promptTokens, completionTokens },
+                "AI 调用统计已记录"
+              );
               reply.send(response);
               resolve();
             },
