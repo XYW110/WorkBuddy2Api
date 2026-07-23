@@ -71,3 +71,37 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: 模型动态拉取(UA修复/字段扩展)与 API Key 调用统计
+
+**Date**: 2026-07-24
+**Task**: 模型动态拉取(UA修复/字段扩展)与 API Key 调用统计
+**Branch**: `master`
+
+### Summary
+
+实现两个功能：(1) API Key 调用统计面板——按 key+model 维度统计调用次数/token，H1 估算，JSON 当日持久化，GET /admin/stats/usage + 前端面板；(2) 模型列表动态拉取——从 /v3/config 抓取，经 Reqable 抓包定位到必须带 WorkBuddy UA 否则上游走精简分支只回 productFeatures，修复后返回 43 个模型，字段扩展(descriptionZh/maxAllowedSize/maxInputTokens/maxOutputTokens/supportsImages/supportsToolCall/supportsReasoning/isDefault/tags)并透出前后端，默认 max_tokens 按模型 maxOutputTokens 配置走。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `92a0617` | (see git log) |
+| `3bbda51` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
