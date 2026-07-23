@@ -1,9 +1,21 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { OpenAIModelList } from "../types/openai.js";
 import { sendOk } from "../utils/envelope.js";
-import { MODELS, parseCredits } from "../model-catalog.js";
+import { parseCredits } from "../model-catalog.js";
+import { getModels } from "../services/model-fetcher.js";
 
-export { getCheapestModel } from "../model-catalog.js";
+/** 动态取最经济模型（基于最新拉取的模型列表） */
+export function getCheapestModel(): string | null {
+  const candidates = getModels()
+    .filter((m) => m.credits && m.credits.trim() !== "")
+    .map((m) => ({ id: m.id, creditsNum: parseCredits(m.credits) }))
+    .filter((m) => !isNaN(m.creditsNum));
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => a.creditsNum - b.creditsNum);
+  return candidates[0].id;
+}
 
 export async function modelRoutes(app: FastifyInstance): Promise<void> {
   app.get("/v1/models", async (_req: FastifyRequest, reply: FastifyReply) => {
@@ -16,15 +28,28 @@ export async function modelRoutes(app: FastifyInstance): Promise<void> {
         owned_by: "workbuddy",
       },
     ];
+    const models = getModels();
     const data: OpenAIModelList = {
       object: "list",
       data: [
         ...virtual,
-        ...MODELS.map((m) => ({
+        ...models.map((m) => ({
           id: m.id,
           object: "model" as const,
           created: 1728000000,
           owned_by: m.owned_by,
+          description: m.descriptionZh ?? undefined,
+          // 上游能力/额度元数据（OpenAI 标准外扩展字段）
+          descriptionZh: m.descriptionZh ?? undefined,
+          credits: m.credits || undefined,
+          maxAllowedSize: m.maxAllowedSize,
+          maxInputTokens: m.maxInputTokens,
+          maxOutputTokens: m.maxOutputTokens,
+          supportsImages: m.supportsImages,
+          supportsToolCall: m.supportsToolCall,
+          supportsReasoning: m.supportsReasoning,
+          isDefault: m.isDefault,
+          tags: m.tags,
         })),
       ],
     };
@@ -36,7 +61,8 @@ export async function modelRoutes(app: FastifyInstance): Promise<void> {
 export async function adminModelRoutes(app: FastifyInstance): Promise<void> {
   // 注意：server.ts 注册时已加 prefix: "/admin"，此处只需 "/models"
   app.get("/models", async (_req: FastifyRequest, reply: FastifyReply) => {
-    const enriched = MODELS.map((m) => {
+    const models = getModels();
+    const enriched = models.map((m) => {
       const creditsNum = parseCredits(m.credits);
       const creditsLabel =
         creditsNum === 0
@@ -51,6 +77,15 @@ export async function adminModelRoutes(app: FastifyInstance): Promise<void> {
         credits: m.credits,
         creditsNum,
         creditsLabel,
+        descriptionZh: m.descriptionZh ?? "",
+        maxAllowedSize: m.maxAllowedSize ?? null,
+        maxInputTokens: m.maxInputTokens ?? null,
+        maxOutputTokens: m.maxOutputTokens ?? null,
+        supportsImages: m.supportsImages ?? false,
+        supportsToolCall: m.supportsToolCall ?? false,
+        supportsReasoning: m.supportsReasoning ?? false,
+        isDefault: m.isDefault ?? false,
+        tags: m.tags ?? [],
       };
     });
 

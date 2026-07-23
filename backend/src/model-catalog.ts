@@ -8,6 +8,24 @@ export interface ModelDef {
   name: string;
   owned_by: string;
   credits: string;
+  /** 模型中文描述（来自上游 /v3/config） */
+  descriptionZh?: string;
+  /** 单次请求允许的最大内容大小（字节），来自上游 maxAllowedSize */
+  maxAllowedSize?: number;
+  /** 最大输入 token 数 */
+  maxInputTokens?: number;
+  /** 最大输出 token 数 */
+  maxOutputTokens?: number;
+  /** 是否支持图片输入 */
+  supportsImages?: boolean;
+  /** 是否支持工具调用（function calling） */
+  supportsToolCall?: boolean;
+  /** 是否支持推理（reasoning/thinking） */
+  supportsReasoning?: boolean;
+  /** 是否为默认模型 */
+  isDefault?: boolean;
+  /** 标签数组（如 ["craft"]） */
+  tags?: string[];
 }
 
 /** 从 /v3/config 抓包确认的真实模型列表

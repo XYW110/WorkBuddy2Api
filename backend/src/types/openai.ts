@@ -110,4 +110,17 @@ export interface OpenAIModel {
   object: "model";
   created: number;
   owned_by: string;
+  /** 模型描述（OpenAI 标准字段） */
+  description?: string;
+  // —— 扩展元数据（对齐 ModelDef，供客户端/面板使用）——
+  descriptionZh?: string;
+  credits?: string;
+  maxAllowedSize?: number;
+  maxInputTokens?: number;
+  maxOutputTokens?: number;
+  supportsImages?: boolean;
+  supportsToolCall?: boolean;
+  supportsReasoning?: boolean;
+  isDefault?: boolean;
+  tags?: string[];
 }

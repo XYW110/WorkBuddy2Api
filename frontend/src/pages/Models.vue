@@ -29,6 +29,35 @@ function creditsTagType(
   return "danger";
 }
 
+/** 将字节数格式化为可读文本 */
+function formatBytes(n?: number | null): string {
+  if (n == null) return "—";
+  const units = ["B", "KB", "MB", "GB"];
+  let v = n;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}
+
+/** 将 token 数格式化为可读文本（K） */
+function formatTokens(n?: number | null): string {
+  if (n == null) return "—";
+  if (n >= 1000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K`;
+  return String(n);
+}
+
+/** 能力标签：图片 / 工具调用 / 推理 */
+function capabilityTags(m: ModelInfo): { label: string; type: "success" | "warning" | "info" }[] {
+  const tags: { label: string; type: "success" | "warning" | "info" }[] = [];
+  if (m.supportsImages) tags.push({ label: "图片", type: "success" });
+  if (m.supportsToolCall) tags.push({ label: "工具调用", type: "warning" });
+  if (m.supportsReasoning) tags.push({ label: "推理", type: "info" });
+  return tags;
+}
+
 /** 经济别名当前指向的模型名称 */
 const aliasTargetName = computed(() => {
   if (!lb.value?.selectedModelId) return "—";
@@ -175,16 +204,96 @@ onMounted(() => {
         :closable="false"
         :title="errorMsg"
       />
-      <el-table v-else :data="data" stripe size="default">
-        <el-table-column label="名称" prop="name" min-width="200" />
-        <el-table-column label="ID" prop="id" min-width="240" />
-        <el-table-column label="厂商" prop="owned_by" min-width="120" />
-        <el-table-column label="倍率" min-width="100" align="center">
+      <el-table v-else :data="data" stripe size="default" row-key="id">
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <el-descriptions :column="2" border size="small">
+              <el-descriptions-item label="ID">{{ row.id }}</el-descriptions-item>
+              <el-descriptions-item label="厂商">{{ row.owned_by }}</el-descriptions-item>
+              <el-descriptions-item label="描述">
+                {{ row.descriptionZh || "—" }}
+              </el-descriptions-item>
+              <el-descriptions-item label="倍率">
+                <el-tag :type="creditsTagType(row)" size="small">{{ row.creditsLabel }}</el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="最大输入">
+                {{ formatTokens(row.maxInputTokens) }} tokens
+              </el-descriptions-item>
+              <el-descriptions-item label="最大输出">
+                {{ formatTokens(row.maxOutputTokens) }} tokens
+              </el-descriptions-item>
+              <el-descriptions-item label="最大内容大小">
+                {{ formatBytes(row.maxAllowedSize) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="能力">
+                <template v-if="capabilityTags(row).length">
+                  <el-tag
+                    v-for="t in capabilityTags(row)"
+                    :key="t.label"
+                    :type="t.type"
+                    size="small"
+                    style="margin-right: 4px"
+                    >{{ t.label }}</el-tag
+                  >
+                </template>
+                <span v-else>—</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="默认模型">
+                {{ row.isDefault ? "是" : "否" }}
+              </el-descriptions-item>
+              <el-descriptions-item label="标签">
+                <template v-if="row.tags && row.tags.length">
+                  <el-tag
+                    v-for="t in row.tags"
+                    :key="t"
+                    type="info"
+                    size="small"
+                    style="margin-right: 4px"
+                    >{{ t }}</el-tag
+                  >
+                </template>
+                <span v-else>—</span>
+              </el-descriptions-item>
+            </el-descriptions>
+          </template>
+        </el-table-column>
+        <el-table-column label="名称" min-width="180">
+          <template #default="{ row }">
+            <span>{{ row.name }}</span>
+            <el-tag v-if="row.isDefault" size="small" type="primary" style="margin-left: 6px"
+              >默认</el-tag
+            >
+          </template>
+        </el-table-column>
+        <el-table-column label="ID" prop="id" min-width="220" />
+        <el-table-column label="厂商" prop="owned_by" min-width="110" />
+        <el-table-column label="倍率" min-width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="creditsTagType(row)" size="small">
               {{ row.creditsLabel }}
             </el-tag>
           </template>
+        </el-table-column>
+        <el-table-column label="能力" min-width="140">
+          <template #default="{ row }">
+            <template v-if="capabilityTags(row).length">
+              <el-tag
+                v-for="t in capabilityTags(row)"
+                :key="t.label"
+                :type="t.type"
+                size="small"
+                style="margin-right: 4px"
+                >{{ t.label }}</el-tag
+              >
+            </template>
+            <span v-else>—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="最大输入" min-width="100" align="center">
+          <template #default="{ row }">{{ formatTokens(row.maxInputTokens) }}</template>
+        </el-table-column>
+        <el-table-column label="最大输出" min-width="100" align="center">
+          <template #default="{ row }">{{ formatTokens(row.maxOutputTokens) }}</template>
         </el-table-column>
       </el-table>
     </el-card>

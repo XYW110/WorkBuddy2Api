@@ -12,13 +12,29 @@ import type {
   CodeBuddySSEChunk,
   CodeBuddySSEChoice,
 } from "../types/codebuddy.js";
+import { getModels } from "./model-fetcher.js";
 
 const CHAT_ID = "chatcmpl-" + randomUUID().slice(0, 8);
+
+/** 默认 max_tokens 回退值。
+ *  当用户/模型配置都未给出上限时使用（避免长回复被上游截断，finish_reason: "length"）。
+ *  可用环境变量 CHAT_MAX_TOKENS 覆盖（如 16384）。 */
+const DEFAULT_MAX_TOKENS = Number(process.env.CHAT_MAX_TOKENS ?? 32000);
+
+/**
+ * 解析模型默认 max_tokens：未显式指定时按上游模型配置 maxOutputTokens 走，
+ * 缺失（或 <=0）再回退 fallback。
+ */
+function resolveDefaultMaxTokens(model: string, fallback: number): number {
+  const m = getModels().find((x) => x.id === model);
+  const cfg = m?.maxOutputTokens;
+  return typeof cfg === "number" && cfg > 0 ? cfg : fallback;
+}
 
 /** OpenAI 请求 → CodeBuddy 原生请求 */
 export function openaiToCodeBuddy(
   req: OpenAIChatRequest,
-  maxTokens: number = 4096
+  maxTokens: number = DEFAULT_MAX_TOKENS
 ): CodeBuddyChatRequest {
   const result: CodeBuddyChatRequest = {
     messages: req.messages
@@ -30,7 +46,8 @@ export function openaiToCodeBuddy(
     model: req.model || "auto",
     // 上游强制 stream: true
     stream: true,
-    max_tokens: req.max_tokens ?? maxTokens,
+    // 未显式指定 max_tokens 时，按模型配置 maxOutputTokens 走（缺失回退默认值）
+    max_tokens: req.max_tokens ?? resolveDefaultMaxTokens(req.model || "auto", maxTokens),
   };
 
   // 透传 tools 定义
