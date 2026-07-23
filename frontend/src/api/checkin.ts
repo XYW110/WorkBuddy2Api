@@ -3,6 +3,7 @@ import type {
   CheckinResult,
   CheckinStatusData,
   CheckinHistoryRecord,
+  CheckinBatchResult,
   Paginated,
   PaginationQuery,
 } from './types'
@@ -21,6 +22,12 @@ export async function runCheckin(): Promise<CheckinResult> {
 /** POST /admin/checkin/:id — 指定凭证签到 */
 export async function runCheckinById(id: string): Promise<CheckinResult> {
   const res = await apiClient.post<CheckinResult>(`/admin/checkin/${id}`)
+  return res.data
+}
+
+/** POST /admin/checkin/all — 全部账户签到（遍历所有有凭据的凭证） */
+export async function runCheckinAll(): Promise<CheckinBatchResult> {
+  const res = await apiClient.post<CheckinBatchResult>('/admin/checkin/all')
   return res.data
 }
 

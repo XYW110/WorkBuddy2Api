@@ -1,6 +1,6 @@
 import { logger } from "../utils/logger.js";
 import { config } from "../config.js";
-import { runCheckinWithActive } from "./checkin.js";
+import { runCheckinAll } from "./checkin.js";
 import { runLeaderboard, loadAlias } from "./leaderboard/index.js";
 
 let timer: NodeJS.Timeout | null = null;
@@ -27,16 +27,10 @@ async function runCheckinTask(): Promise<void> {
   }
   running = true;
   try {
-    logger.info("定时签到任务开始");
-    const result = await runCheckinWithActive("scheduled");
+    logger.info("定时签到任务开始（全部账户）");
+    const result = await runCheckinAll("scheduled");
     logger.info(
-      {
-        success: result.success,
-        skipped: result.skipped,
-        reason: result.reason,
-        credit: result.credit,
-        streakDays: result.streakDays,
-      },
+      { ...result.summary },
       "定时签到任务结束"
     );
   } catch (err) {

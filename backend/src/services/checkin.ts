@@ -8,6 +8,7 @@ import type {
   CheckinSource,
   CheckinStatusResponse,
   DailyCheckinResponse,
+  CheckinBatchResult,
 } from "../types/checkin.js";
 import { refreshAccessToken } from "./proxy.js";
 import * as store from "./credential-store.js";
@@ -288,4 +289,35 @@ export async function runCheckinWithActive(
     return result;
   }
   return runCheckin(credential, source);
+}
+
+/** 遍历全部凭证执行签到（自动/手动「全部签到」共用）
+ *  - 顺序执行以复用 runCheckin 的刷新/跳过/历史写入逻辑，并避免限流与历史文件并发写
+ *  - 已在运行时直接抛 CHECKIN_ALL_BUSY，由调用方（路由）映射为 409
+ */
+let allRunning = false;
+export async function runCheckinAll(
+  source: CheckinSource = "manual"
+): Promise<CheckinBatchResult> {
+  if (allRunning) {
+    throw new Error("CHECKIN_ALL_BUSY");
+  }
+  allRunning = true;
+  const results: CheckinResult[] = [];
+  try {
+    const credentials = store.getAll();
+    for (const credential of credentials) {
+      results.push(await runCheckin(credential, source));
+    }
+  } finally {
+    allRunning = false;
+  }
+
+  const checked = results.filter((r) => r.success && !r.skipped).length;
+  const skipped = results.filter((r) => r.skipped).length;
+  const failed = results.filter((r) => !r.success && !r.skipped).length;
+  return {
+    results,
+    summary: { total: results.length, checked, skipped, failed },
+  };
 }

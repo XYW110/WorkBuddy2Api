@@ -67,7 +67,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
   app.post(
     "/v1/chat/completions",
     async (req: FastifyRequest, reply: FastifyReply) => {
-      const cred = credentials.getActive();
+      const cred = credentials.getNextRoundRobin();
       if (!cred) {
         return reply.status(401).send({ error: "无可用凭证，请先配置" });
       }

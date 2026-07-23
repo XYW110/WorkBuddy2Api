@@ -6,15 +6,18 @@ import {
   getCheckinStatus,
   listCheckinHistory,
   runCheckin,
+  runCheckinAll,
 } from "../api/checkin";
 import type {
   CheckinHistoryRecord,
   CheckinResult,
   CheckinStatusData,
+  CheckinBatchResult,
 } from "../api/types";
 
 const statusLoading = ref(false);
 const checkinLoading = ref(false);
+const allLoading = ref(false);
 const historyLoading = ref(false);
 
 const statusData = ref<CheckinStatusData | null>(null);
@@ -101,6 +104,24 @@ async function onRunCheckin() {
   }
 }
 
+async function onCheckinAll() {
+  allLoading.value = true;
+  try {
+    const batch: CheckinBatchResult = await runCheckinAll();
+    const { checked, skipped, failed } = batch.summary;
+    if (failed > 0) {
+      ElMessage.warning(`全部账户签到完成：已签 ${checked} / 跳过 ${skipped} / 失败 ${failed}`);
+    } else {
+      ElMessage.success(`全部账户签到完成：已签 ${checked} / 跳过 ${skipped}`);
+    }
+    await Promise.all([loadStatus(), loadHistory()]);
+  } catch (e) {
+    ElMessage.error(errMsg(e));
+  } finally {
+    allLoading.value = false;
+  }
+}
+
 function onHistoryPageChange(p: number) {
   historyPage.value = p;
   void loadHistory();
@@ -157,6 +178,13 @@ onMounted(() => {
           @click="onRunCheckin"
         >
           立即签到
+        </el-button>
+        <el-button
+          type="success"
+          :loading="allLoading"
+          @click="onCheckinAll"
+        >
+          全部账户签到
         </el-button>
       </div>
     </div>

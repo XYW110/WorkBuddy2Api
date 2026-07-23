@@ -97,6 +97,17 @@ export interface CheckinResult {
   credentialName?: string;
 }
 
+/** POST /admin/checkin/all 返回的批量聚合结果 */
+export interface CheckinBatchResult {
+  results: CheckinResult[];
+  summary: {
+    total: number;
+    checked: number;
+    skipped: number;
+    failed: number;
+  };
+}
+
 /** 上游活动状态，保持 snake_case 原样 */
 export interface CheckinActivityData {
   active: boolean;

@@ -63,6 +63,17 @@ export interface CheckinResult {
 /** 签到触发来源 */
 export type CheckinSource = "manual" | "scheduled" | "script";
 
+/** 批量签到（全部账户）聚合结果 */
+export interface CheckinBatchResult {
+  results: CheckinResult[];
+  summary: {
+    total: number;
+    checked: number;
+    skipped: number;
+    failed: number;
+  };
+}
+
 /** 单条签到历史（扁平字段对齐 CheckinResult） */
 export interface CheckinHistoryRecord {
   id: string;

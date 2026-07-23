@@ -3,10 +3,11 @@ import { getActive, getById } from "../../services/credential-store.js";
 import {
   runCheckin,
   runCheckinWithActive,
+  runCheckinAll,
   getCheckinStatus,
 } from "../../services/checkin.js";
 import { listCheckinHistory } from "../../services/checkin-history-store.js";
-import type { CheckinResult } from "../../types/checkin.js";
+import type { CheckinResult, CheckinBatchResult } from "../../types/checkin.js";
 import { logger } from "../../utils/logger.js";
 import { sendOk, sendFail } from "../../utils/envelope.js";
 import { parsePagination, paginate } from "../../utils/pagination.js";
@@ -30,6 +31,30 @@ export async function checkinRoutes(app: FastifyInstance): Promise<void> {
           executedAt: new Date().toISOString(),
         },
         "签到异常",
+        502
+      );
+    }
+  });
+
+  /** POST /checkin/all — 手动触发全部账户签到（遍历 store.getAll()） */
+  app.post("/checkin/all", async (_req, reply) => {
+    try {
+      const result: CheckinBatchResult = await runCheckinAll("manual");
+      sendOk(reply, result, "全部账户签到完成");
+    } catch (err) {
+      const busy = (err as Error).message === "CHECKIN_ALL_BUSY";
+      if (busy) {
+        sendFail(reply, 409, "已有签到任务进行中，请稍后再试");
+        return;
+      }
+      logger.error({ err }, "全部账户签到时发生异常");
+      sendOk(
+        reply,
+        {
+          results: [],
+          summary: { total: 0, checked: 0, skipped: 0, failed: 0 },
+        },
+        "全部账户签到异常",
         502
       );
     }

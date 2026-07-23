@@ -44,6 +44,24 @@ export function getStore(): CredentialStore {
   return store;
 }
 
+/** 轮询返回下一个可用的凭证（用于 AI 调用 round-robin）
+ *  - 过滤条件与 proxy.ts 的 Header 构建逻辑一致（有 key/accessToken 才算可用）
+ *  - 模块级 rrIndex 单调递增，Node 单线程下无需加锁
+ */
+let rrIndex = 0;
+export function getNextRoundRobin(): Credential | undefined {
+  const usable = store.credentials.filter(
+    (c) =>
+      (c.type === "api-key" && !!c.key) ||
+      (c.type === "local-file" && !!c.accessToken)
+  );
+  if (usable.length === 0) return undefined;
+
+  const cred = usable[rrIndex % usable.length];
+  rrIndex += 1;
+  return cred;
+}
+
 /**
  * 导入整库快照，按 id 合并去重：
  * - 已存在（id 相同）→ 就地覆盖全部字段（含 isActive/source）
